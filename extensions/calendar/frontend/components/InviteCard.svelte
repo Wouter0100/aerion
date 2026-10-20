@@ -16,7 +16,7 @@
   import { toasts } from '$lib/stores/toast'
   import RSVPControls from './RSVPControls.svelte'
   // @ts-ignore - wailsjs bindings
-  import { GetAttachments, GetAttachmentText, SendMessage, Calendar_PreviewInvite, Calendar_RespondToInvite, Calendar_BuildInviteReply } from '$wailsjs/go/app/App'
+  import { GetAttachments, GetAttachmentText, GetIdentities, SendMessage, Calendar_PreviewInvite, Calendar_RespondToInvite, Calendar_BuildInviteReply } from '$wailsjs/go/app/App'
   import { smtp, type backend } from '$wailsjs/go/models'
 
   interface Props {
@@ -118,16 +118,28 @@
     await load(messageId)
   }
 
-  async function mailReply(acc: { id: string; name: string; email: string }, partStat: string) {
+  // The display name the composer would use for acc's address: its own
+  // identity, else the account's default identity. Account.name is the
+  // account's label, not a person's name.
+  async function senderName(acc: { id: string; email: string }): Promise<string> {
+    const identities = (await GetIdentities(acc.id)) || []
+    const email = (acc.email || '').toLowerCase()
+    const own = identities.filter((i) => (i.email || '').toLowerCase() === email)
+    const identity = own.find((i) => i.isDefault) ?? own[0] ?? identities.find((i) => i.isDefault) ?? identities[0]
+    return identity?.name || ''
+  }
+
+  async function mailReply(acc: { id: string; email: string }, partStat: string) {
     const reply = await Calendar_BuildInviteReply(ics, selfEmails, partStat, acc.email)
     const answer = answerLabel(partStat)
+    const name = await senderName(acc)
     await SendMessage(acc.id, smtp.ComposeMessage.createFrom({
-      from: { name: acc.name, address: reply.from },
+      from: { name, address: reply.from },
       to: [{ name: reply.toName ?? '', address: reply.to }],
       cc: [],
       bcc: [],
       subject: $_('calendar.invite.replySubject', { values: { answer, summary: reply.summary } }),
-      text_body: $_('calendar.invite.replyBody', { values: { name: acc.name || reply.from, answer, summary: reply.summary } }),
+      text_body: $_('calendar.invite.replyBody', { values: { name: name || reply.from, answer, summary: reply.summary } }),
       html_body: '',
       attachments: [],
       calendar_method: 'REPLY',
@@ -146,7 +158,7 @@
   }))
 
   const whenLabel = $derived.by(() => {
-    if (!preview) return ''
+    if (!preview || !preview.dtstartUnix) return ''
     const start = new Date(preview.dtstartUnix * 1000)
     const end = new Date(preview.dtendUnix * 1000)
     if (preview.isAllDay) {
@@ -165,9 +177,11 @@
       <Icon icon="mdi:calendar-account" class="w-5 h-5 mt-0.5 text-primary flex-shrink-0" />
       <div class="min-w-0 flex-1 space-y-1">
         <div class="font-medium text-foreground">{preview.summary || $_('calendar.detail.noTitle')}</div>
-        <div class="text-sm text-muted-foreground">
-          {whenLabel}{#if preview.recurring} · {$_('calendar.invite.recurring')}{/if}
-        </div>
+        {#if whenLabel}
+          <div class="text-sm text-muted-foreground">
+            {whenLabel}{#if preview.recurring} · {$_('calendar.invite.recurring')}{/if}
+          </div>
+        {/if}
         {#if preview.location}
           <div class="text-sm text-muted-foreground break-words">{preview.location}</div>
         {/if}
@@ -182,7 +196,13 @@
     {#if preview.method === 'CANCEL'}
       <p class="text-sm text-foreground mt-3">{$_('calendar.invite.cancelled')}</p>
     {:else if preview.method === 'REPLY'}
-      <p class="text-sm text-muted-foreground mt-3">{$_('calendar.invite.reply')}</p>
+      <p class="text-sm text-muted-foreground mt-3">
+        {#if preview.replier}
+          {$_('calendar.invite.replied', { values: { name: preview.replier.cn || preview.replier.email, answer: answerLabel(preview.replier.partStat || '') } })}
+        {:else}
+          {$_('calendar.invite.reply')}
+        {/if}
+      </p>
     {:else if !preview.myEmail}
       <p class="text-sm text-muted-foreground mt-3">{$_('calendar.invite.notInvited')}</p>
     {:else}

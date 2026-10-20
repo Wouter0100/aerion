@@ -1343,6 +1343,7 @@ export namespace backend {
 	    organizer?: Organizer;
 	    myEmail?: string;
 	    myPartStat?: string;
+	    replier?: Attendee;
 	    existing?: InviteExisting;
 	    targets: InviteTarget[];
 	
@@ -1364,6 +1365,7 @@ export namespace backend {
 	        this.organizer = this.convertValues(source["organizer"], Organizer);
 	        this.myEmail = source["myEmail"];
 	        this.myPartStat = source["myPartStat"];
+	        this.replier = this.convertValues(source["replier"], Attendee);
 	        this.existing = this.convertValues(source["existing"], InviteExisting);
 	        this.targets = this.convertValues(source["targets"], InviteTarget);
 	    }

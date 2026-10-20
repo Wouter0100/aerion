@@ -31,10 +31,12 @@ type InvitePreview struct {
 	// MyEmail is the self address the invite lists as an attendee and
 	// MyPartStat its PARTSTAT in the mailed object. Both are empty when no
 	// self address is invited.
-	MyEmail    string          `json:"myEmail,omitempty"`
-	MyPartStat string          `json:"myPartStat,omitempty"`
-	Existing   *InviteExisting `json:"existing,omitempty"`
-	Targets    []InviteTarget  `json:"targets"`
+	MyEmail    string `json:"myEmail,omitempty"`
+	MyPartStat string `json:"myPartStat,omitempty"`
+	// Replier is the attendee who answered, for METHOD:REPLY.
+	Replier  *Attendee       `json:"replier,omitempty"`
+	Existing *InviteExisting `json:"existing,omitempty"`
+	Targets  []InviteTarget  `json:"targets"`
 }
 
 // InviteExisting is the stored copy of the invited event (matched by UID).
@@ -64,37 +66,53 @@ type InviteReply struct {
 
 var errNotInvited = errors.New("calendar: you are not an attendee of this invite")
 
-// PreviewInvite describes rawICS for the invite card.
+// PreviewInvite describes rawICS for the invite card. Times are filled in
+// only when the object has a DTSTART: a REPLY or CANCEL may omit it.
 func (a *API) PreviewInvite(rawICS string, selfEmails []string) (*InvitePreview, error) {
 	cal, err := ical.NewDecoder(strings.NewReader(rawICS)).Decode()
 	if err != nil {
 		return nil, fmt.Errorf("decode invite: %w", err)
 	}
-	parsed, err := ParseCalendarObject(rawICS)
-	if err != nil {
-		return nil, fmt.Errorf("parse invite: %w", err)
+	master := masterVEVENT(cal)
+	if master == nil {
+		return nil, errors.New("calendar: invite has no VEVENT")
 	}
-	m := parsed.Master
-	self := selfEmailSet(selfEmails)
+	ev := &ical.Event{Component: master}
+	attendees := parseAttendeesFromVEVENT(ev)
 
 	p := &InvitePreview{
-		Method:      strings.ToUpper(propTextOnComp(cal.Component, ical.PropMethod)),
-		UID:         m.UID,
-		Summary:     unescapeICalText(m.Summary),
-		Location:    unescapeICalText(m.Location),
-		DTStartUnix: m.DTStartUnix,
-		DTEndUnix:   m.DTEndUnix,
-		IsAllDay:    m.IsAllDay,
-		TZName:      m.TZName,
-		Recurring:   m.RRuleText != "",
-		Organizer:   m.Organizer,
+		Method:    strings.ToUpper(propTextOnComp(cal.Component, ical.PropMethod)),
+		UID:       propText(ev, ical.PropUID),
+		Summary:   unescapeICalText(propText(ev, ical.PropSummary)),
+		Location:  unescapeICalText(propText(ev, ical.PropLocation)),
+		Recurring: propText(ev, ical.PropRecurrenceRule) != "",
+		Organizer: parseOrganizerFromVEVENT(ev),
+		Targets:   []InviteTarget{},
 	}
-	if att := findSelfAttendee(m.Attendees, self); att != nil {
+	if master.Props.Get(ical.PropDateTimeStart) != nil {
+		parsed, err := ParseCalendarObject(rawICS)
+		if err != nil {
+			return nil, fmt.Errorf("parse invite: %w", err)
+		}
+		p.DTStartUnix = parsed.Master.DTStartUnix
+		p.DTEndUnix = parsed.Master.DTEndUnix
+		p.IsAllDay = parsed.Master.IsAllDay
+		p.TZName = parsed.Master.TZName
+	}
+	if p.Method == "REPLY" {
+		if len(attendees) > 0 {
+			p.Replier = &attendees[0]
+		}
+		return p, nil
+	}
+
+	self := selfEmailSet(selfEmails)
+	if att := findSelfAttendee(attendees, self); att != nil {
 		p.MyEmail = att.Email
 		p.MyPartStat = att.PartStat
 	}
 
-	existing, err := a.findInviteEvent(m.UID)
+	existing, err := a.findInviteEvent(p.UID)
 	if err != nil {
 		return nil, err
 	}

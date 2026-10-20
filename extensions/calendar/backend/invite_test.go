@@ -352,3 +352,26 @@ func TestBuildInviteReply_SentBy(t *testing.T) {
 		})
 	}
 }
+
+// The card also renders on the sent REPLY itself, which has no DTSTART.
+func TestPreviewInvite_Reply(t *testing.T) {
+	f := newInviteFixture(t)
+	r, err := f.api.BuildInviteReply(inviteRequestICS, inviteSelf, "ACCEPTED", "")
+	if err != nil {
+		t.Fatalf("BuildInviteReply: %v", err)
+	}
+
+	p, err := f.api.PreviewInvite(r.ICS, inviteSelf)
+	if err != nil {
+		t.Fatalf("PreviewInvite(REPLY): %v", err)
+	}
+	if p.Method != "REPLY" || p.Summary != "Board; meeting" || p.DTStartUnix != 0 {
+		t.Errorf("method %q summary %q dtstart %d", p.Method, p.Summary, p.DTStartUnix)
+	}
+	if p.Replier == nil || p.Replier.Email != "me@example.com" || p.Replier.PartStat != PartStatAccepted {
+		t.Errorf("Replier = %+v", p.Replier)
+	}
+	if p.MyEmail != "" || p.Existing != nil || len(p.Targets) != 0 {
+		t.Errorf("a REPLY offers answers: myEmail %q existing %+v targets %d", p.MyEmail, p.Existing, len(p.Targets))
+	}
+}
