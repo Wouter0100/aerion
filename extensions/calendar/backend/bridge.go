@@ -468,6 +468,9 @@ func (b *CalendarBridge) Calendar_ListEventsInRange(calendarIDs []string, fromUn
 			// Skip the bad event rather than aborting the whole query.
 			continue
 		}
+		for i := range instances {
+			decodeDisplayText(&instances[i].Event)
+		}
 		// NOTE: DescriptionHTML is deliberately NOT populated here. This is
 		// the hot path (re-run on every view change + every sync-complete),
 		// and decoding each event's ICS blob + sanitizing per call is far too
@@ -497,7 +500,7 @@ func (b *CalendarBridge) Calendar_GetEvent(eventID string) (*Event, error) {
 	// aren't re-parsed on an ETag-unchanged resync) display with real line
 	// breaks. Idempotent for providers that already store plaintext (Graph text
 	// bodies, Google) — no backslash escapes → returned unchanged.
-	ev.Description = unescapeICalText(ev.Description)
+	decodeDisplayText(ev)
 
 	// One About-body engine, two modes. Exchange/Graph put full HTML straight
 	// into the DESCRIPTION column; sanitize + render as HTML. Everything else

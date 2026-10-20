@@ -225,6 +225,15 @@ func propTextDecoded(ev *ical.Event, name string) string {
 	return strings.TrimSpace(p.Value)
 }
 
+// decodeDisplayText decodes the TEXT escapes in the fields the UI shows.
+// CalDAV objects store SUMMARY, LOCATION and DESCRIPTION escaped, so
+// without it a title like "Board\; meeting" shows its backslash.
+func decodeDisplayText(ev *Event) {
+	ev.Summary = unescapeICalText(ev.Summary)
+	ev.Location = unescapeICalText(ev.Location)
+	ev.Description = unescapeICalText(ev.Description)
+}
+
 // unescapeICalText decodes RFC 5545 TEXT escapes in a raw property value:
 // \n and \N → newline; \\ \, \; → literal backslash/comma/semicolon. Applied
 // when a stored body is rendered, so DESCRIPTIONs that were persisted raw

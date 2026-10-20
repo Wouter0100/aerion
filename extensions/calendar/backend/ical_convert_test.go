@@ -139,3 +139,15 @@ func TestUnescapeICalText(t *testing.T) {
 		})
 	}
 }
+
+func TestDecodeDisplayText(t *testing.T) {
+	ev := Event{
+		Summary:     `Board\; meeting`,
+		Location:    `Room 1\, Ede`,
+		Description: `line one\nline two`,
+	}
+	decodeDisplayText(&ev)
+	if ev.Summary != "Board; meeting" || ev.Location != "Room 1, Ede" || ev.Description != "line one\nline two" {
+		t.Errorf("got summary %q location %q description %q", ev.Summary, ev.Location, ev.Description)
+	}
+}
