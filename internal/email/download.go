@@ -45,12 +45,7 @@ func (d *AttachmentDownloader) ExtractAttachmentContent(raw []byte, targetFilena
 
 	// Single-part message: the whole entity may itself be the attachment.
 	if getFilename(entity) == targetFilename {
-		content, err := io.ReadAll(entity.Body)
-		if err != nil {
-			return nil, err
-		}
-		transferEncoding := strings.ToLower(entity.Header.Get("Content-Transfer-Encoding"))
-		return decodeContent(content, transferEncoding), nil
+		return io.ReadAll(entity.Body)
 	}
 
 	return nil, fmt.Errorf("attachment not found: %s", targetFilename)
@@ -111,18 +106,14 @@ func (d *AttachmentDownloader) findInlineAttachmentsInMultipart(mr gomessage.Mul
 			contentType = "application/octet-stream"
 		}
 
-		// Read content
+		// Read content (go-message has already undone the transfer encoding)
 		content, err := io.ReadAll(part.Body)
 		if err != nil {
 			continue
 		}
 
-		// Decode content if transfer-encoded
-		transferEncoding := strings.ToLower(part.Header.Get("Content-Transfer-Encoding"))
-		decodedContent := decodeContent(content, transferEncoding)
-
 		// Build data URL
-		dataURL := buildDataURL(contentType, decodedContent)
+		dataURL := buildDataURL(contentType, content)
 		result[contentID] = dataURL
 	}
 }
@@ -180,14 +171,7 @@ func (d *AttachmentDownloader) findAttachmentInMultipart(mr gomessage.MultipartR
 		// Check filename
 		filename := getFilename(part)
 		if filename == targetFilename {
-			content, err := io.ReadAll(part.Body)
-			if err != nil {
-				return nil, err
-			}
-
-			// Decode content if transfer-encoded
-			transferEncoding := strings.ToLower(part.Header.Get("Content-Transfer-Encoding"))
-			return decodeContent(content, transferEncoding), nil
+			return io.ReadAll(part.Body)
 		}
 	}
 

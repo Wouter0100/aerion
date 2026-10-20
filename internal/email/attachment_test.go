@@ -88,3 +88,47 @@ func TestExtractAttachmentContent_FallbackNameLockstep(t *testing.T) {
 		t.Errorf("content mismatch: got %q, want %q", got, ics)
 	}
 }
+
+// go-message undoes the Content-Transfer-Encoding while reading, so the
+// extractor and the downloader must not decode again: a second
+// quoted-printable pass turns "PARTSTAT=ACCEPTED" into "PARTSTAT\xacCEPTED".
+func TestAttachmentContent_DecodedOnce(t *testing.T) {
+	ics := []byte("BEGIN:VCALENDAR\r\nATTENDEE;PARTSTAT=ACCEPTED:mailto:me@example.com\r\nEND:VCALENDAR")
+	bin := []byte{0x00, 0xff, '=', 'A', 'C', 0x10}
+
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "MIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=B\r\n\r\n")
+	fmt.Fprintf(&buf, "--B\r\nContent-Type: text/plain\r\n\r\nbody\r\n")
+	fmt.Fprintf(&buf, "--B\r\nContent-Type: text/calendar; method=REPLY\r\nContent-Transfer-Encoding: quoted-printable\r\n")
+	fmt.Fprintf(&buf, "Content-Disposition: attachment; filename=reply.ics\r\n\r\n")
+	fmt.Fprintf(&buf, "BEGIN:VCALENDAR\r\nATTENDEE;PARTSTAT=3DACCEPTED:mailto:me@example.com\r\nEND:VCALENDAR\r\n")
+	fmt.Fprintf(&buf, "--B\r\nContent-Type: application/octet-stream\r\nContent-Transfer-Encoding: base64\r\n")
+	fmt.Fprintf(&buf, "Content-Disposition: attachment; filename=data.bin\r\n\r\nAP89QUMQ\r\n--B--\r\n")
+	raw := buf.Bytes()
+
+	want := map[string][]byte{"reply.ics": ics, "data.bin": bin}
+
+	atts, err := NewAttachmentExtractor().ExtractAttachments("msg-1", raw)
+	if err != nil {
+		t.Fatalf("ExtractAttachments: %v", err)
+	}
+	if len(atts) != len(want) {
+		t.Fatalf("got %d attachments, want %d", len(atts), len(want))
+	}
+	for _, a := range atts {
+		if !bytes.Equal(a.Content, want[a.Attachment.Filename]) {
+			t.Errorf("extractor %s = %q, want %q", a.Attachment.Filename, a.Content, want[a.Attachment.Filename])
+		}
+	}
+
+	d := NewAttachmentDownloader(t.TempDir())
+	for name, w := range want {
+		got, err := d.ExtractAttachmentContent(raw, name)
+		if err != nil {
+			t.Fatalf("ExtractAttachmentContent(%s): %v", name, err)
+		}
+		if !bytes.Equal(got, w) {
+			t.Errorf("downloader %s = %q, want %q", name, got, w)
+		}
+	}
+}
