@@ -62,8 +62,8 @@ export function Calendar_AddMicrosoftSource(arg1, arg2, arg3, arg4) {
   return window['go']['app']['App']['Calendar_AddMicrosoftSource'](arg1, arg2, arg3, arg4);
 }
 
-export function Calendar_BuildInviteReply(arg1, arg2, arg3) {
-  return window['go']['app']['App']['Calendar_BuildInviteReply'](arg1, arg2, arg3);
+export function Calendar_BuildInviteReply(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['Calendar_BuildInviteReply'](arg1, arg2, arg3, arg4);
 }
 
 export function Calendar_CreateEvent(arg1) {

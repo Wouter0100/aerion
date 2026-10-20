@@ -80,8 +80,8 @@ func (a *API) PreviewInvite(rawICS string, selfEmails []string) (*InvitePreview,
 	p := &InvitePreview{
 		Method:      strings.ToUpper(propTextOnComp(cal.Component, ical.PropMethod)),
 		UID:         m.UID,
-		Summary:     m.Summary,
-		Location:    m.Location,
+		Summary:     unescapeICalText(m.Summary),
+		Location:    unescapeICalText(m.Location),
 		DTStartUnix: m.DTStartUnix,
 		DTEndUnix:   m.DTEndUnix,
 		IsAllDay:    m.IsAllDay,
@@ -154,8 +154,11 @@ func (a *API) RespondToInvite(rawICS, calendarID string, selfEmails []string, pa
 
 // BuildInviteReply builds the iMIP REPLY for the user's answer to rawICS.
 // It carries only what RFC 5546 §3.2.3 requires: UID, SEQUENCE, DTSTAMP,
-// ORGANIZER and the user's own ATTENDEE.
-func (a *API) BuildInviteReply(rawICS string, selfEmails []string, partStat string) (*InviteReply, error) {
+// ORGANIZER and the user's own ATTENDEE. A non-empty sentBy that differs
+// from the invited address is the mailbox the REPLY is mailed from; it goes
+// into the ATTENDEE's SENT-BY parameter so the organizer still matches the
+// invited attendee.
+func (a *API) BuildInviteReply(rawICS string, selfEmails []string, partStat, sentBy string) (*InviteReply, error) {
 	ps, err := invitePartStat(partStat)
 	if err != nil {
 		return nil, err
@@ -189,6 +192,11 @@ func (a *API) BuildInviteReply(rawICS string, selfEmails []string, partStat stri
 	}
 	me.Params.Set(ical.ParamParticipationStatus, ps)
 	me.Params.Del(ical.ParamRSVP)
+	from := calAddressEmail(me.Value)
+	if s := calAddressEmail(sentBy); s != "" && s != from {
+		me.Params.Set(ical.ParamSentBy, mailtoCalAddress(s))
+		from = s
+	}
 
 	ev := ical.NewEvent()
 	for _, name := range []string{ical.PropUID, ical.PropSequence, ical.PropRecurrenceID, ical.PropSummary} {
@@ -211,10 +219,10 @@ func (a *API) BuildInviteReply(rawICS string, selfEmails []string, partStat stri
 		return nil, fmt.Errorf("encode reply: %w", err)
 	}
 	return &InviteReply{
-		From:    calAddressEmail(me.Value),
+		From:    from,
 		To:      calAddressEmail(org.Value),
 		ToName:  strings.TrimSpace(org.Params.Get(ical.ParamCommonName)),
-		Summary: propTextOnComp(master, ical.PropSummary),
+		Summary: unescapeICalText(propTextOnComp(master, ical.PropSummary)),
 		ICS:     sb.String(),
 	}, nil
 }

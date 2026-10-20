@@ -3,7 +3,8 @@
   // Mounted by ConversationViewer when the calendar extension is enabled.
   // Answering stores the event in a calendar; when no provider tells the
   // organizer (InvitePreview's notifiesOrganizer), the card mails an iMIP
-  // REPLY from the account whose address the invite lists.
+  // REPLY from the account that received the invite. When that is not the
+  // invited address, the REPLY names it as SENT-BY for the invited one.
 
   import { _, locale } from 'svelte-i18n'
   import Icon from '@iconify/svelte'
@@ -20,9 +21,11 @@
 
   interface Props {
     messageId: string
+    /** Account that received the message; the REPLY is mailed from it. */
+    accountId: string
   }
 
-  let { messageId }: Props = $props()
+  let { messageId, accountId }: Props = $props()
 
   let ics = $state('')
   let preview = $state<backend.InvitePreview | null>(null)
@@ -64,11 +67,15 @@
     }
   }
 
-  // The mail account the invite was sent to, if the user has one.
+  // The account that received the invite, else the one with the invited
+  // address.
   const replyAccount = $derived.by(() => {
     const email = preview?.myEmail
     if (!email) return null
-    return accountStore.accounts.find((aw) => (aw.account?.email || '').toLowerCase() === email)?.account ?? null
+    const accounts = accountStore.accounts.map((aw) => aw.account).filter((a) => !!a)
+    return accounts.find((a) => a.id === accountId)
+      ?? accounts.find((a) => (a.email || '').toLowerCase() === email)
+      ?? null
   })
 
   const serverNotifies = $derived.by(() => {
@@ -79,6 +86,9 @@
 
   const notifyLabel = $derived.by(() => {
     if (serverNotifies) return $_('calendar.invite.serverNotifies')
+    if (replyAccount && (replyAccount.email || '').toLowerCase() !== preview?.myEmail) {
+      return $_('calendar.invite.mailNotifiesOnBehalf', { values: { email: replyAccount.email, attendee: preview?.myEmail } })
+    }
     if (replyAccount) return $_('calendar.invite.mailNotifies', { values: { email: replyAccount.email } })
     return $_('calendar.invite.noNotify')
   })
@@ -109,7 +119,7 @@
   }
 
   async function mailReply(acc: { id: string; name: string; email: string }, partStat: string) {
-    const reply = await Calendar_BuildInviteReply(ics, selfEmails, partStat)
+    const reply = await Calendar_BuildInviteReply(ics, selfEmails, partStat, acc.email)
     const answer = answerLabel(partStat)
     await SendMessage(acc.id, smtp.ComposeMessage.createFrom({
       from: { name: acc.name, address: reply.from },

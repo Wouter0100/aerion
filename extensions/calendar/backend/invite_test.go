@@ -24,8 +24,8 @@ const inviteRequestICS = "BEGIN:VCALENDAR\r\n" +
 	"DTSTART;TZID=Europe/Amsterdam:20261116T173000\r\n" +
 	"DTEND;TZID=Europe/Amsterdam:20261116T210000\r\n" +
 	"RRULE:FREQ=WEEKLY;INTERVAL=8\r\n" +
-	"SUMMARY:Board meeting\r\n" +
-	"LOCATION:Ede\r\n" +
+	"SUMMARY:Board\\; meeting\r\n" +
+	"LOCATION:Tuxis\\, Ede\r\n" +
 	"X-CUSTOM-KEEP:yes\r\n" +
 	"ORGANIZER;CN=Organizer:mailto:org@example.com\r\n" +
 	"ATTENDEE;CN=Me;RSVP=TRUE;PARTSTAT=NEEDS-ACTION:mailto:Me@Example.com\r\n" +
@@ -134,7 +134,7 @@ func TestPreviewInvite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PreviewInvite: %v", err)
 	}
-	if p.Method != "REQUEST" || p.UID != "board/2026@example.com" || p.Summary != "Board meeting" {
+	if p.Method != "REQUEST" || p.UID != "board/2026@example.com" || p.Summary != "Board; meeting" {
 		t.Errorf("got method %q uid %q summary %q", p.Method, p.UID, p.Summary)
 	}
 	if !p.Recurring {
@@ -288,11 +288,11 @@ func TestRespondToInvite_Errors(t *testing.T) {
 
 func TestBuildInviteReply(t *testing.T) {
 	f := newInviteFixture(t)
-	r, err := f.api.BuildInviteReply(inviteRequestICS, inviteSelf, "tentative")
+	r, err := f.api.BuildInviteReply(inviteRequestICS, inviteSelf, "tentative", "")
 	if err != nil {
 		t.Fatalf("BuildInviteReply: %v", err)
 	}
-	if r.From != "me@example.com" || r.To != "org@example.com" || r.ToName != "Organizer" || r.Summary != "Board meeting" {
+	if r.From != "me@example.com" || r.To != "org@example.com" || r.ToName != "Organizer" || r.Summary != "Board; meeting" {
 		t.Errorf("reply = %+v", r)
 	}
 
@@ -319,7 +319,36 @@ func TestBuildInviteReply(t *testing.T) {
 		t.Error("REPLY lacks ORGANIZER or DTSTAMP")
 	}
 
-	if _, err := f.api.BuildInviteReply(inviteRequestICS, []string{"nobody@example.com"}, "ACCEPTED"); !errors.Is(err, errNotInvited) {
+	if _, err := f.api.BuildInviteReply(inviteRequestICS, []string{"nobody@example.com"}, "ACCEPTED", ""); !errors.Is(err, errNotInvited) {
 		t.Errorf("not invited: err = %v", err)
+	}
+}
+
+func TestBuildInviteReply_SentBy(t *testing.T) {
+	f := newInviteFixture(t)
+	tests := []struct {
+		name, sentBy, wantFrom, wantSentBy string
+	}{
+		{"other mailbox", "Wouter@DCC.example", "wouter@dcc.example", "mailto:wouter@dcc.example"},
+		{"invited mailbox", "me@example.com", "me@example.com", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r, err := f.api.BuildInviteReply(inviteRequestICS, inviteSelf, "ACCEPTED", tt.sentBy)
+			if err != nil {
+				t.Fatalf("BuildInviteReply: %v", err)
+			}
+			if r.From != tt.wantFrom {
+				t.Errorf("From = %q, want %q", r.From, tt.wantFrom)
+			}
+			_, ev := decodeMaster(t, r.ICS)
+			att := ev.Props.Get(ical.PropAttendee)
+			if calAddressEmail(att.Value) != "me@example.com" {
+				t.Errorf("ATTENDEE = %q, want the invited address", att.Value)
+			}
+			if got := att.Params.Get(ical.ParamSentBy); got != tt.wantSentBy {
+				t.Errorf("SENT-BY = %q, want %q", got, tt.wantSentBy)
+			}
+		})
 	}
 }

@@ -870,14 +870,15 @@ func (b *CalendarBridge) Calendar_RespondToInvite(ics, calendarID string, selfEm
 
 // Calendar_BuildInviteReply builds the iMIP REPLY to mail to the organizer
 // when no provider sends it (InvitePreview's NotifiesOrganizer is false).
-func (b *CalendarBridge) Calendar_BuildInviteReply(ics string, selfEmails []string, partStat string) (*InviteReply, error) {
+// sentBy is the address of the mailbox the REPLY is mailed from.
+func (b *CalendarBridge) Calendar_BuildInviteReply(ics string, selfEmails []string, partStat, sentBy string) (*InviteReply, error) {
 	if !b.gateEnabled() {
 		return nil, errors.New("calendar: extension disabled")
 	}
 	if err := b.ensureInit(); err != nil {
 		return nil, err
 	}
-	return b.api.BuildInviteReply(ics, selfEmails, partStat)
+	return b.api.BuildInviteReply(ics, selfEmails, partStat, sentBy)
 }
 
 // Calendar_SearchContacts proxies contact-autocomplete queries from the

@@ -49,7 +49,7 @@ export function Calendar_AddLocalSource(arg1:string):Promise<string>;
 
 export function Calendar_AddMicrosoftSource(arg1:string,arg2:string,arg3:string,arg4:Array<backend.MicrosoftCalendarSelection>):Promise<string>;
 
-export function Calendar_BuildInviteReply(arg1:string,arg2:Array<string>,arg3:string):Promise<backend.InviteReply>;
+export function Calendar_BuildInviteReply(arg1:string,arg2:Array<string>,arg3:string,arg4:string):Promise<backend.InviteReply>;
 
 export function Calendar_CreateEvent(arg1:backend.EventInput):Promise<string>;
 

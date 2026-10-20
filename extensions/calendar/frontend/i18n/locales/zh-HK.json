@@ -301,6 +301,7 @@
       "reply": "This is an answer to an invitation.",
       "serverNotifies": "Your calendar server tells the organizer your answer.",
       "mailNotifies": "Aerion mails your answer to the organizer from {email}.",
+      "mailNotifiesOnBehalf": "Aerion mails your answer to the organizer from {email}, on behalf of {attendee}.",
       "noNotify": "The organizer is not told your answer.",
       "saved": "Answer saved.",
       "savedAndSent": "Answer saved and sent to the organizer.",

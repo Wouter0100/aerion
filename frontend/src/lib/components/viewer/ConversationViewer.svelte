@@ -1790,7 +1790,7 @@
                       </div>
 
                       {#if msg.hasAttachments && !msg.hasPGP && !msg.hasSMIME && isExtensionEnabled('calendar')}
-                        <InviteCard messageId={msg.id} />
+                        <InviteCard messageId={msg.id} accountId={msg.accountId} />
                       {/if}
 
                       <!-- Attachments -->
