@@ -8,6 +8,7 @@
   import { calendarSources } from '$extensions/calendar/frontend/stores/calendarSources.svelte'
   import { calendarSettings } from '$extensions/calendar/frontend/stores/calendarSettings.svelte'
   import { toTzDate } from '$extensions/calendar/frontend/lib/tzMath'
+  import { collectSelfEmails } from '$extensions/calendar/frontend/lib/selfEmails'
   import { calendarView } from '$extensions/calendar/frontend/stores/calendarView.svelte'
   import { events } from '$extensions/calendar/frontend/stores/events.svelte'
   import { Button } from '$lib/components/ui/button'
@@ -121,25 +122,10 @@
   // Account aliases (Identity rows on AccountIdentityGroup) still
   // require a separate GetAllAccountIdentities call; deferred — the
   // calendar-source coverage closes the user-reported gap.
-  const selfEmails = $derived.by(() => {
-    const seen = new Set<string>()
-    const out: string[] = []
-    const push = (raw: string | undefined) => {
-      const v = (raw || '').toLowerCase().trim()
-      if (v === '' || seen.has(v)) return
-      seen.add(v)
-      out.push(v)
-    }
-    for (const aw of accountStore.accounts) {
-      push(aw.account?.email)
-    }
-    for (const src of calendarSources.sources) {
-      for (const email of src.organizerIdentities ?? []) {
-        push(email)
-      }
-    }
-    return out
-  })
+  const selfEmails = $derived(collectSelfEmails(
+    accountStore.accounts.map((aw) => aw.account?.email),
+    calendarSources.sources,
+  ))
 
   const selfAttendee = $derived.by(() => {
     if (!event?.attendees) return null

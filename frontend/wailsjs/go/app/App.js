@@ -62,6 +62,10 @@ export function Calendar_AddMicrosoftSource(arg1, arg2, arg3, arg4) {
   return window['go']['app']['App']['Calendar_AddMicrosoftSource'](arg1, arg2, arg3, arg4);
 }
 
+export function Calendar_BuildInviteReply(arg1, arg2, arg3) {
+  return window['go']['app']['App']['Calendar_BuildInviteReply'](arg1, arg2, arg3);
+}
+
 export function Calendar_CreateEvent(arg1) {
   return window['go']['app']['App']['Calendar_CreateEvent'](arg1);
 }
@@ -122,6 +126,10 @@ export function Calendar_OpenURL(arg1) {
   return window['go']['app']['App']['Calendar_OpenURL'](arg1);
 }
 
+export function Calendar_PreviewInvite(arg1, arg2) {
+  return window['go']['app']['App']['Calendar_PreviewInvite'](arg1, arg2);
+}
+
 export function Calendar_QueryFreeBusy(arg1, arg2, arg3, arg4) {
   return window['go']['app']['App']['Calendar_QueryFreeBusy'](arg1, arg2, arg3, arg4);
 }
@@ -132,6 +140,10 @@ export function Calendar_RenameSource(arg1, arg2) {
 
 export function Calendar_ReprobeCalDAVOrganizerIdentities(arg1) {
   return window['go']['app']['App']['Calendar_ReprobeCalDAVOrganizerIdentities'](arg1);
+}
+
+export function Calendar_RespondToInvite(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['App']['Calendar_RespondToInvite'](arg1, arg2, arg3, arg4);
 }
 
 export function Calendar_SearchContacts(arg1, arg2) {
@@ -408,6 +420,10 @@ export function GetAppInfo() {
 
 export function GetAttachment(arg1) {
   return window['go']['app']['App']['GetAttachment'](arg1);
+}
+
+export function GetAttachmentText(arg1) {
+  return window['go']['app']['App']['GetAttachmentText'](arg1);
 }
 
 export function GetAttachments(arg1) {

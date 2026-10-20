@@ -291,6 +291,24 @@
       "busy": "Busy",
       "free": "Free"
     },
+    "invite": {
+      "recurring": "repeats",
+      "addTo": "Add to",
+      "inCalendar": "In your calendar “{calendar}”.",
+      "noTarget": "No calendar can take this invite. Add a CalDAV or local calendar first.",
+      "notInvited": "You are not listed as an attendee of this invite.",
+      "cancelled": "The organizer cancelled this event.",
+      "reply": "This is an answer to an invitation.",
+      "serverNotifies": "Your calendar server tells the organizer your answer.",
+      "mailNotifies": "Aerion mails your answer to the organizer from {email}.",
+      "noNotify": "The organizer is not told your answer.",
+      "saved": "Answer saved.",
+      "savedAndSent": "Answer saved and sent to the organizer.",
+      "sendFailed": "Answer saved, but the mail to the organizer failed",
+      "loadFailed": "Could not read the invite",
+      "replySubject": "{answer}: {summary}",
+      "replyBody": "{name} answered “{answer}” to: {summary}"
+    },
     "composer": {
       "titleCreate": "New event",
       "titleEdit": "Edit event",

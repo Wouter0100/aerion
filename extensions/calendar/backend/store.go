@@ -972,6 +972,25 @@ func (s *Store) GetEvent(id string) (*Event, error) {
 	return ev, nil
 }
 
+// FindEventIDsByUID returns the IDs of every stored event with this UID,
+// across all calendars (one invite can sit in more than one calendar).
+func (s *Store) FindEventIDsByUID(uid string) ([]string, error) {
+	rows, err := s.DB().Query(`SELECT id FROM events WHERE uid = ? ORDER BY id`, uid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 // ListEventsForExpansion returns all events for the given calendars. The
 // recurrence expansion step (rrule_expand) then filters by the requested
 // window. v1 fetches everything — fine for typical calendars (<1k events

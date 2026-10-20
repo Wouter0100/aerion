@@ -86,39 +86,13 @@ func (a *App) DownloadAttachment(attachmentID, savePath string) (string, error) 
 		}
 	}
 
-	// Get the message to find folder and UID
-	msg, err := a.messageStore.Get(att.MessageID)
+	content, err := a.fetchAttachmentContent(att)
 	if err != nil {
-		log.Error().Err(err).Str("messageID", att.MessageID).Msg("Failed to get message")
-		return "", fmt.Errorf("failed to get message: %w", err)
+		return "", err
 	}
-	if msg == nil {
-		log.Error().Str("messageID", att.MessageID).Msg("Message not found")
-		return "", fmt.Errorf("message not found: %s", att.MessageID)
-	}
-
-	log.Debug().Uint32("uid", msg.UID).Str("folderID", msg.FolderID).Msg("Got message info")
-
-	// Fetch raw message from IMAP
-	raw, err := a.syncEngine.FetchRawMessage(a.ctx, msg.AccountID, msg.FolderID, msg.UID)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to fetch raw message from IMAP")
-		return "", fmt.Errorf("failed to fetch message: %w", err)
-	}
-
-	log.Debug().Int("rawSize", len(raw)).Msg("Fetched raw message from IMAP")
-
-	// Extract attachment content
-	downloader := email.NewAttachmentDownloader(a.paths.AttachmentsPath())
-	content, err := downloader.ExtractAttachmentContent(raw, att.Filename)
-	if err != nil {
-		log.Error().Err(err).Str("filename", att.Filename).Msg("Failed to extract attachment content")
-		return "", fmt.Errorf("failed to extract attachment: %w", err)
-	}
-
-	log.Debug().Int("contentSize", len(content)).Msg("Extracted attachment content")
 
 	// Save to disk
+	downloader := email.NewAttachmentDownloader(a.paths.AttachmentsPath())
 	localPath, err := downloader.SaveAttachment(att, content, savePath)
 	if err != nil {
 		log.Error().Err(err).Str("savePath", savePath).Msg("Failed to save attachment to disk")
@@ -134,6 +108,69 @@ func (a *App) DownloadAttachment(attachmentID, savePath string) (string, error) 
 
 	log.Info().Str("attachment", att.Filename).Str("path", localPath).Int("size", len(content)).Msg("Attachment downloaded")
 	return localPath, nil
+}
+
+// fetchAttachmentContent fetches the attachment's message from IMAP and
+// extracts the attachment bytes.
+func (a *App) fetchAttachmentContent(att *message.Attachment) ([]byte, error) {
+	log := logging.WithComponent("app")
+
+	// Get the message to find folder and UID
+	msg, err := a.messageStore.Get(att.MessageID)
+	if err != nil {
+		log.Error().Err(err).Str("messageID", att.MessageID).Msg("Failed to get message")
+		return nil, fmt.Errorf("failed to get message: %w", err)
+	}
+	if msg == nil {
+		log.Error().Str("messageID", att.MessageID).Msg("Message not found")
+		return nil, fmt.Errorf("message not found: %s", att.MessageID)
+	}
+
+	log.Debug().Uint32("uid", msg.UID).Str("folderID", msg.FolderID).Msg("Got message info")
+
+	// Fetch raw message from IMAP
+	raw, err := a.syncEngine.FetchRawMessage(a.ctx, msg.AccountID, msg.FolderID, msg.UID)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to fetch raw message from IMAP")
+		return nil, fmt.Errorf("failed to fetch message: %w", err)
+	}
+
+	log.Debug().Int("rawSize", len(raw)).Msg("Fetched raw message from IMAP")
+
+	// Extract attachment content
+	downloader := email.NewAttachmentDownloader(a.paths.AttachmentsPath())
+	content, err := downloader.ExtractAttachmentContent(raw, att.Filename)
+	if err != nil {
+		log.Error().Err(err).Str("filename", att.Filename).Msg("Failed to extract attachment content")
+		return nil, fmt.Errorf("failed to extract attachment: %w", err)
+	}
+
+	log.Debug().Int("contentSize", len(content)).Msg("Extracted attachment content")
+	return content, nil
+}
+
+// maxAttachmentTextSize bounds GetAttachmentText; a calendar invite is a
+// few KB, so anything near this is not one.
+const maxAttachmentTextSize = 1 << 20
+
+// GetAttachmentText returns a text attachment's content, such as the
+// text/calendar part the invite card reads.
+func (a *App) GetAttachmentText(attachmentID string) (string, error) {
+	att, err := a.attachmentStore.Get(attachmentID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get attachment: %w", err)
+	}
+	if att == nil {
+		return "", fmt.Errorf("attachment not found: %s", attachmentID)
+	}
+	if att.Size > maxAttachmentTextSize {
+		return "", fmt.Errorf("attachment too large: %d bytes", att.Size)
+	}
+	content, err := a.fetchAttachmentContent(att)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
 
 // OpenAttachment downloads (if needed) and opens an attachment with the default application

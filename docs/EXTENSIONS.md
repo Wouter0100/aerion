@@ -525,6 +525,13 @@ make per-user decisions. First wired examples:
   `freebusy_aggregator.go::QueryAggregatedFreeBusy`) — routes self
   emails to a local DB scan (no remote query) and non-self emails to
   Google `freeBusy.query` or Microsoft `getSchedule` via fan-out.
+- `Calendar_PreviewInvite`, `Calendar_RespondToInvite` and
+  `Calendar_BuildInviteReply` at the same bridge (delegate to
+  `extensions/calendar/backend/invite.go`) — the mail viewer's invite
+  card. `InviteCard.svelte` is mounted statically by `ConversationViewer`
+  when the calendar extension is enabled; it gathers the self emails with
+  `extensions/calendar/frontend/lib/selfEmails.ts`, the same helper
+  EventDetail uses.
 
 ### Stability
 

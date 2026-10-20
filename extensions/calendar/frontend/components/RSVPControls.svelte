@@ -13,7 +13,7 @@
   import { Calendar_UpdateMyAttendeeStatus } from '$wailsjs/go/app/App'
 
   interface Props {
-    eventId: string
+    eventId?: string
     /** Current PARTSTAT of the self-attendee — used to highlight the
      *  matching button so users can see their current state at a glance. */
     currentPartStat?: string
@@ -25,18 +25,26 @@
      *  to surface the new PartStat in AttendeeListDisplay. */
     onUpdated?: () => void
     disabled?: boolean
+    /** Replaces the Calendar_UpdateMyAttendeeStatus call (and its success
+     *  toast) for answers that are not about a stored event, such as the
+     *  mail viewer's invite card. */
+    respond?: (partStat: string) => Promise<void>
   }
 
-  let { eventId, currentPartStat = '', selfEmails, onUpdated, disabled = false }: Props = $props()
+  let { eventId = '', currentPartStat = '', selfEmails, onUpdated, disabled = false, respond }: Props = $props()
 
   let working = $state(false)
 
   async function rsvp(partStat: string) {
-    if (working || disabled || !eventId) return
+    if (working || disabled || (!respond && !eventId)) return
     working = true
     try {
-      await Calendar_UpdateMyAttendeeStatus(eventId, selfEmails, partStat)
-      toasts.success($_('calendar.attendees.rsvpToast'))
+      if (respond) {
+        await respond(partStat)
+      } else {
+        await Calendar_UpdateMyAttendeeStatus(eventId, selfEmails, partStat)
+        toasts.success($_('calendar.attendees.rsvpToast'))
+      }
       onUpdated?.()
     } catch (err) {
       const msg = (err as Error)?.message ?? String(err)

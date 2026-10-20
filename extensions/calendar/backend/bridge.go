@@ -835,6 +835,51 @@ func (b *CalendarBridge) Calendar_UpdateMyAttendeeStatus(eventID string, selfEma
 	return b.api.UpdateMyAttendeeStatus(eventID, selfEmails, partStat)
 }
 
+// Calendar_PreviewInvite describes an iTIP object from a mail (the raw
+// text/calendar part) for the mail viewer's invite card. selfEmails follows
+// the same convention as Calendar_UpdateMyAttendeeStatus.
+func (b *CalendarBridge) Calendar_PreviewInvite(ics string, selfEmails []string) (*InvitePreview, error) {
+	if !b.gateEnabled() {
+		return nil, errors.New("calendar: extension disabled")
+	}
+	if err := b.ensureInit(); err != nil {
+		return nil, err
+	}
+	return b.api.PreviewInvite(ics, selfEmails)
+}
+
+// Calendar_RespondToInvite stores the user's answer to a mailed invite:
+// it updates the stored copy when a calendar has the event, or imports it
+// into calendarID. Returns the event ID.
+func (b *CalendarBridge) Calendar_RespondToInvite(ics, calendarID string, selfEmails []string, partStat string) (string, error) {
+	if !b.gateEnabled() {
+		return "", errors.New("calendar: extension disabled")
+	}
+	if err := b.ensureInit(); err != nil {
+		return "", err
+	}
+	eventID, err := b.api.RespondToInvite(ics, calendarID, selfEmails, partStat)
+	if err != nil {
+		return "", err
+	}
+	if b.alarms != nil {
+		_ = b.alarms.Reevaluate()
+	}
+	return eventID, nil
+}
+
+// Calendar_BuildInviteReply builds the iMIP REPLY to mail to the organizer
+// when no provider sends it (InvitePreview's NotifiesOrganizer is false).
+func (b *CalendarBridge) Calendar_BuildInviteReply(ics string, selfEmails []string, partStat string) (*InviteReply, error) {
+	if !b.gateEnabled() {
+		return nil, errors.New("calendar: extension disabled")
+	}
+	if err := b.ensureInit(); err != nil {
+		return nil, err
+	}
+	return b.api.BuildInviteReply(ics, selfEmails, partStat)
+}
+
 // Calendar_SearchContacts proxies contact-autocomplete queries from the
 // calendar's attendee picker to coreapi.Contacts.SearchContacts. Same
 // backend function the mail composer's RecipientInput hits (via the

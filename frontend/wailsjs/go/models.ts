@@ -1294,6 +1294,119 @@ export namespace backend {
 	        this.writable = source["writable"];
 	    }
 	}
+	export class InviteExisting {
+	    eventId: string;
+	    calendarName: string;
+	    myPartStat?: string;
+	    notifiesOrganizer: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new InviteExisting(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.eventId = source["eventId"];
+	        this.calendarName = source["calendarName"];
+	        this.myPartStat = source["myPartStat"];
+	        this.notifiesOrganizer = source["notifiesOrganizer"];
+	    }
+	}
+	export class InviteTarget {
+	    calendarId: string;
+	    calendarName: string;
+	    sourceName: string;
+	    notifiesOrganizer: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new InviteTarget(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.calendarId = source["calendarId"];
+	        this.calendarName = source["calendarName"];
+	        this.sourceName = source["sourceName"];
+	        this.notifiesOrganizer = source["notifiesOrganizer"];
+	    }
+	}
+	export class InvitePreview {
+	    method: string;
+	    uid: string;
+	    summary: string;
+	    location?: string;
+	    dtstartUnix: number;
+	    dtendUnix: number;
+	    isAllDay: boolean;
+	    tzName?: string;
+	    recurring: boolean;
+	    organizer?: Organizer;
+	    myEmail?: string;
+	    myPartStat?: string;
+	    existing?: InviteExisting;
+	    targets: InviteTarget[];
+	
+	    static createFrom(source: any = {}) {
+	        return new InvitePreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.method = source["method"];
+	        this.uid = source["uid"];
+	        this.summary = source["summary"];
+	        this.location = source["location"];
+	        this.dtstartUnix = source["dtstartUnix"];
+	        this.dtendUnix = source["dtendUnix"];
+	        this.isAllDay = source["isAllDay"];
+	        this.tzName = source["tzName"];
+	        this.recurring = source["recurring"];
+	        this.organizer = this.convertValues(source["organizer"], Organizer);
+	        this.myEmail = source["myEmail"];
+	        this.myPartStat = source["myPartStat"];
+	        this.existing = this.convertValues(source["existing"], InviteExisting);
+	        this.targets = this.convertValues(source["targets"], InviteTarget);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class InviteReply {
+	    from: string;
+	    to: string;
+	    toName?: string;
+	    summary: string;
+	    ics: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InviteReply(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.from = source["from"];
+	        this.to = source["to"];
+	        this.toName = source["toName"];
+	        this.summary = source["summary"];
+	        this.ics = source["ics"];
+	    }
+	}
+	
 	export class MicrosoftCalendarChoice {
 	    id: string;
 	    name: string;
@@ -2625,6 +2738,8 @@ export namespace smtp {
 	    text_body: string;
 	    html_body: string;
 	    attachments: Attachment[];
+	    calendar_method?: string;
+	    calendar_body?: string;
 	    in_reply_to?: string;
 	    references?: string[];
 	    request_read_receipt: boolean;
@@ -2648,6 +2763,8 @@ export namespace smtp {
 	        this.text_body = source["text_body"];
 	        this.html_body = source["html_body"];
 	        this.attachments = this.convertValues(source["attachments"], Attachment);
+	        this.calendar_method = source["calendar_method"];
+	        this.calendar_body = source["calendar_body"];
 	        this.in_reply_to = source["in_reply_to"];
 	        this.references = source["references"];
 	        this.request_read_receipt = source["request_read_receipt"];

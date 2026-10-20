@@ -10,6 +10,8 @@
   // @ts-ignore - wailsjs path
   import { message as messageModels } from '../../../../wailsjs/go/models'
   import AttachmentList from './AttachmentList.svelte'
+  import InviteCard from '$extensions/calendar/frontend/components/InviteCard.svelte'
+  import { isExtensionEnabled } from '$lib/stores/extensionRegistry.svelte'
   import EmailBody from './EmailBody.svelte'
   import { toasts } from '$lib/stores/toast'
   import { setFocusedPane, isInputElement, isComposerOpen } from '$lib/stores/keyboard.svelte'
@@ -1786,6 +1788,10 @@
                           />
                         {/if}
                       </div>
+
+                      {#if msg.hasAttachments && !msg.hasPGP && !msg.hasSMIME && isExtensionEnabled('calendar')}
+                        <InviteCard messageId={msg.id} />
+                      {/if}
 
                       <!-- Attachments -->
                       {#if msg.hasAttachments || (pgpResults[msg.id]?.attachments?.length ?? 0) > 0 || (smimeResults[msg.id]?.attachments?.length ?? 0) > 0}

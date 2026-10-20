@@ -245,7 +245,7 @@ func (p caldavProvider) PushEvent(ctx context.Context, src Source, cal Calendar,
 	isCreate := ev.Href == ""
 	href := ev.Href
 	if isCreate {
-		href = joinHref(cal.URL, ev.UID+".ics")
+		href = joinHref(cal.URL, caldavResourceName(ev.UID))
 	}
 	// Resolve relative paths against the source's base URL. CalDAV servers
 	// (Nextcloud in particular) return calendar paths as server-relative
@@ -462,6 +462,13 @@ func (p caldavProvider) retryDeleteUnconditional(ctx context.Context, httpClient
 // joinHref appends suffix to base preserving the URL shape. Uses path.Join
 // after stripping/restoring any scheme://host prefix so the result keeps
 // scheme + host (path.Join would mangle "https://" → "https:/").
+// caldavResourceName is the object name a new event is PUT under. The UID
+// is path-escaped: Aerion's own UIDs pass through unchanged, but an
+// imported invite's UID may contain '/', '?', '#' or spaces.
+func caldavResourceName(uid string) string {
+	return url.PathEscape(uid) + ".ics"
+}
+
 func joinHref(base, suffix string) string {
 	// Find the path part after scheme://host.
 	if idx := strings.Index(base, "://"); idx != -1 {

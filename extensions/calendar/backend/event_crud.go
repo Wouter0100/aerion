@@ -171,7 +171,7 @@ func (a *API) CreateEvent(in EventInput) (string, error) {
 		ev.ETag = result.ETag
 		ev.ProviderEventID = result.ProviderEventID
 		if src.Type == SourceTypeCalDAV {
-			ev.Href = joinHref(cal.URL, uid+".ics")
+			ev.Href = joinHref(cal.URL, caldavResourceName(uid))
 		}
 		// Server's authoritative attendee/organizer state takes precedence.
 		// On create Google/Microsoft enrich the attendees with self/organizer

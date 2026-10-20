@@ -426,7 +426,7 @@ func (p caldavProvider) PushInstance(ctx context.Context, src Source, cal Calend
 
 	if composed.NewSeries != nil {
 		// PUT the new series to a fresh resource URL.
-		newHref := joinHref(cal.URL, composed.NewSeries.UID+".ics")
+		newHref := joinHref(cal.URL, caldavResourceName(composed.NewSeries.UID))
 		newHrefAbs, err := absoluteHref(src.URL, newHref)
 		if err != nil {
 			return PushInstanceResult{}, fmt.Errorf("resolve new series href: %w", err)

@@ -37,6 +37,7 @@ var _ coreapi.Secrets = fakeSecrets{}
 type recordedRequest struct {
 	method      string
 	path        string
+	escapedPath string
 	ifMatch     string
 	ifNoneMatch string
 	contentType string
@@ -54,6 +55,7 @@ func newFakeCalDAVServer(t *testing.T, handler func(req recordedRequest, w http.
 		handler(recordedRequest{
 			method:      r.Method,
 			path:        r.URL.Path,
+			escapedPath: r.URL.EscapedPath(),
 			ifMatch:     r.Header.Get("If-Match"),
 			ifNoneMatch: r.Header.Get("If-None-Match"),
 			contentType: r.Header.Get("Content-Type"),

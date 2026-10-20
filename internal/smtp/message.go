@@ -75,6 +75,13 @@ type ComposeMessage struct {
 	// Attachments
 	Attachments []Attachment `json:"attachments"`
 
+	// iMIP (RFC 6047): when CalendarBody is set, the message is a
+	// multipart/alternative of TextBody and a text/calendar part with
+	// CalendarMethod (e.g. an invite REPLY). HTMLBody and Attachments are
+	// not sent with it.
+	CalendarMethod string `json:"calendar_method,omitempty"`
+	CalendarBody   string `json:"calendar_body,omitempty"`
+
 	// Headers
 	InReplyTo  string   `json:"in_reply_to,omitempty"` // Message-ID of the message being replied to
 	References []string `json:"references,omitempty"`  // Thread references
@@ -155,6 +162,10 @@ func (m *ComposeMessage) ToRFC822() ([]byte, error) {
 
 	// Choose message structure based on content
 	switch {
+	case m.CalendarBody != "":
+		if err := writeIMIP(&buf, m.TextBody, m.CalendarMethod, m.CalendarBody); err != nil {
+			return nil, err
+		}
 	case hasAttachments && (hasHTML || hasText):
 		// multipart/mixed with multipart/alternative or just text
 		if err := writeMultipartMixed(&buf, m, regularAttachments, inlineAttachments); err != nil {
@@ -254,6 +265,39 @@ func writeMultipartAlternative(w *bytes.Buffer, textBody, htmlBody string) error
 		return err
 	}
 	writeQuotedPrintable(htmlPart, htmlBody)
+
+	return mpWriter.Close()
+}
+
+// writeIMIP writes the iMIP body: a multipart/alternative of the text body
+// and the text/calendar object, the shape calendar clients act on.
+func writeIMIP(w *bytes.Buffer, textBody, method, calendar string) error {
+	method = strings.ToUpper(strings.TrimSpace(method))
+	if method == "" || strings.Trim(method, "ABCDEFGHIJKLMNOPQRSTUVWXYZ-") != "" {
+		return fmt.Errorf("invalid iTIP method %q", method)
+	}
+
+	mpWriter := multipart.NewWriter(w)
+	writeHeader(w, "Content-Type", fmt.Sprintf("multipart/alternative; boundary=%q", mpWriter.Boundary()))
+	w.WriteString("\r\n")
+
+	textHeader := textproto.MIMEHeader{}
+	textHeader.Set("Content-Type", "text/plain; charset=utf-8")
+	textHeader.Set("Content-Transfer-Encoding", "quoted-printable")
+	textPart, err := mpWriter.CreatePart(textHeader)
+	if err != nil {
+		return err
+	}
+	writeQuotedPrintable(textPart, textBody)
+
+	calHeader := textproto.MIMEHeader{}
+	calHeader.Set("Content-Type", mime.FormatMediaType("text/calendar", map[string]string{"charset": "utf-8", "method": method}))
+	calHeader.Set("Content-Transfer-Encoding", "quoted-printable")
+	calPart, err := mpWriter.CreatePart(calHeader)
+	if err != nil {
+		return err
+	}
+	writeQuotedPrintable(calPart, calendar)
 
 	return mpWriter.Close()
 }
