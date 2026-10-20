@@ -120,8 +120,10 @@ func (e *AttachmentExtractor) extractFromMultipart(messageID string, mr gomessag
 			continue
 		}
 
-		// If it's not text and has content, treat it as an attachment
-		if isAttachment || isInline || (!strings.HasPrefix(contentType, "text/") && contentType != "") {
+		// If it's not text and has content, treat it as an attachment. A bare
+		// text/calendar part is an invite; keep it in step with sync/parse.go.
+		if isAttachment || isInline || contentType == "text/calendar" ||
+			(!strings.HasPrefix(contentType, "text/") && contentType != "") {
 			// Get filename
 			filename := dispParams["filename"]
 			if filename == "" {

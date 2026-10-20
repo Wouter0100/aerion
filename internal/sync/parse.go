@@ -291,8 +291,10 @@ func (e *Engine) parseMultipartBody(mr gomessage.MultipartReader, result *Parsed
 		}
 
 		// Handle non-text, non-image parts with inline disposition (e.g. inline PDF)
-		// or no disposition at all — these are implicit attachments
-		if contentType != "" && !strings.HasPrefix(contentType, "text/") &&
+		// or no disposition at all — these are implicit attachments. text/calendar
+		// counts too: an iTIP invite is usually a bare method=REQUEST part inside
+		// multipart/alternative, and the body switch below would drop it.
+		if contentType != "" && (!strings.HasPrefix(contentType, "text/") || contentType == "text/calendar") &&
 			!isSignaturePart(contentType) {
 			result.HasAttachments = true
 			isInline := disposition == "inline" || contentID != ""

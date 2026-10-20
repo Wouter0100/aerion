@@ -88,3 +88,38 @@ func TestExtractAttachmentContent_FallbackNameLockstep(t *testing.T) {
 		t.Errorf("content mismatch: got %q, want %q", got, ics)
 	}
 }
+
+// A bare invite part (no Content-ID, no disposition) inside
+// multipart/alternative, as SabreDAV-backed and Nextcloud senders produce it.
+func TestExtractAttachments_BareCalendarInvite(t *testing.T) {
+	ics := []byte("BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nEND:VCALENDAR")
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "MIME-Version: 1.0\r\n")
+	fmt.Fprintf(&buf, "Content-Type: multipart/alternative; boundary=ALT\r\n\r\n")
+	fmt.Fprintf(&buf, "--ALT\r\nContent-Type: text/html; charset=utf-8\r\n\r\n<p>Invite</p>\r\n")
+	fmt.Fprintf(&buf, "--ALT\r\nContent-Type: text/calendar; charset=utf-8; method=REQUEST\r\n")
+	fmt.Fprintf(&buf, "Content-Transfer-Encoding: 8bit\r\n\r\n")
+	buf.Write(ics)
+	fmt.Fprintf(&buf, "\r\n--ALT--\r\n")
+	raw := buf.Bytes()
+
+	atts, err := NewAttachmentExtractor().ExtractAttachments("msg-1", raw)
+	if err != nil {
+		t.Fatalf("ExtractAttachments error: %v", err)
+	}
+	if len(atts) != 1 {
+		t.Fatalf("expected 1 attachment, got %d", len(atts))
+	}
+	if atts[0].Attachment.Filename != "invite.ics" || atts[0].Attachment.IsInline {
+		t.Errorf("got filename %q inline %v, want invite.ics not inline",
+			atts[0].Attachment.Filename, atts[0].Attachment.IsInline)
+	}
+
+	got, err := NewAttachmentDownloader(t.TempDir()).ExtractAttachmentContent(raw, "invite.ics")
+	if err != nil {
+		t.Fatalf("ExtractAttachmentContent(invite.ics) error: %v", err)
+	}
+	if !bytes.Equal(got, ics) {
+		t.Errorf("content mismatch: got %q, want %q", got, ics)
+	}
+}
