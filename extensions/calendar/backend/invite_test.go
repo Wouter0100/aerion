@@ -25,7 +25,7 @@ const inviteRequestICS = "BEGIN:VCALENDAR\r\n" +
 	"DTEND;TZID=Europe/Amsterdam:20261116T210000\r\n" +
 	"RRULE:FREQ=WEEKLY;INTERVAL=8\r\n" +
 	"SUMMARY:Board\\; meeting\r\n" +
-	"LOCATION:Tuxis\\, Ede\r\n" +
+	"LOCATION:Room 1\\, Ede\r\n" +
 	"X-CUSTOM-KEEP:yes\r\n" +
 	"ORGANIZER;CN=Organizer:mailto:org@example.com\r\n" +
 	"ATTENDEE;CN=Me;RSVP=TRUE;PARTSTAT=NEEDS-ACTION:mailto:Me@Example.com\r\n" +
